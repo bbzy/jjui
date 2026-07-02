@@ -26,6 +26,23 @@ func TestModel_Init(t *testing.T) {
 	test.SimulateModel(model, model.Init())
 }
 
+func TestModel_Update_EditClearPrefillsCurrentRevset(t *testing.T) {
+	commandRunner := test.NewTestCommandRunner(t)
+	commandRunner.Expect(jj.BookmarkListAll())
+	commandRunner.Expect(jj.TagList())
+	defer commandRunner.Verify()
+
+	ctx := test.NewTestContext(commandRunner)
+	ctx.CurrentRevset = "mine@main"
+	ctx.DefaultRevset = "default"
+	model := New(ctx)
+
+	model.Update(intents.Edit{Clear: true})
+	assert.True(t, model.editing)
+	assert.Equal(t, "mine@main", model.autoComplete.Value())
+	assert.Equal(t, "mine@main", model.userInput)
+}
+
 func TestModel_Update_IntentDoesNotAlterCurrentRevsetDisplay(t *testing.T) {
 	commandRunner := test.NewTestCommandRunner(t)
 	defer commandRunner.Verify()

@@ -259,8 +259,8 @@ func (m *Model) HandleIntent(intent intents.Intent) (tea.Cmd, bool) {
 		m.autoComplete.Focus()
 		m.completionProvider.Load(m.context.RunCommandImmediate)
 		if intent.Clear {
-			m.autoComplete.SetValue("")
-			m.userInput = ""
+			m.autoComplete.SetValue(m.context.CurrentRevset)
+			m.userInput = m.context.CurrentRevset
 		} else {
 			m.userInput = m.autoComplete.Value()
 		}
