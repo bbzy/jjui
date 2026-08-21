@@ -471,6 +471,8 @@ func ResolveIntent(scope string, action keybindings.Action, args map[string]any)
 			return intents.Navigate{Delta: -1, IsPage: true}, true
 		case keybindings.Action("revisions.refresh"):
 			return intents.Refresh{}, true
+		case keybindings.Action("revisions.resolve"):
+			return intents.ResolveConflicts{}, true
 		case keybindings.Action("revisions.split"):
 			return intents.StartSplit{}, true
 		case keybindings.Action("revisions.split_parallel"):

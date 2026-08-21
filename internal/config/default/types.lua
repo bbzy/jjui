@@ -332,6 +332,7 @@ function wait_refresh() end
 ---@field page_down fun()
 ---@field page_up fun()
 ---@field refresh fun()
+---@field resolve fun()
 ---@field split fun()
 ---@field split_parallel fun()
 ---@field toggle_select fun()

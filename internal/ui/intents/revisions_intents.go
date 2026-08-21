@@ -153,6 +153,13 @@ type DiffEdit struct {
 
 func (DiffEdit) isIntent() {}
 
+//jjui:bind scope=revisions action=resolve
+type ResolveConflicts struct {
+	Selected *jj.Commit
+}
+
+func (ResolveConflicts) isIntent() {}
+
 //jjui:bind scope=revisions action=open_absorb
 type OpenAbsorb struct {
 	Selected *jj.Commit

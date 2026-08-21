@@ -52,3 +52,8 @@ func TestAnnotationCommandsUseStableMachineReadableOutput(t *testing.T) {
 		GetRevisionSummariesFromRevset("abc123-"),
 	)
 }
+
+func TestResolveConflictsTargetsRevision(t *testing.T) {
+	assert.Equal(t, CommandArgs{"resolve", "-r", "change-id"}, ResolveConflicts("change-id"))
+}
+

@@ -92,6 +92,17 @@ func TestResolveKey_BuiltInCatalogResolution(t *testing.T) {
 	assert.Equal(t, 1, nav.Delta)
 }
 
+func TestResolveKey_DefaultResolveConflictsShortcut(t *testing.T) {
+	runtimeBindings := config.BindingsToRuntime(config.Current.Bindings)
+	r := makeResolver(runtimeBindings, nil)
+
+	result := r.ResolveKey(tea.KeyPressMsg{Code: 'r', Mod: tea.ModAlt}, createScopes("revisions"))
+	assert.True(t, result.Consumed)
+	assert.Equal(t, "revisions", result.Scope)
+	_, ok := result.Intent.(intents.ResolveConflicts)
+	assert.True(t, ok)
+}
+
 func TestResolveKey_DefaultEmacsListNavigationAliases(t *testing.T) {
 	runtimeBindings := config.BindingsToRuntime(config.Current.Bindings)
 	r := makeResolver(runtimeBindings, nil)

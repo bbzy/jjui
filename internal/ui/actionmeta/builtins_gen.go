@@ -276,6 +276,7 @@ var builtInActionScopes = map[string][]string{
 	"revisions.rebase.skip_emptied":              {"revisions.rebase"},
 	"revisions.rebase.target_picker":             {"revisions.rebase"},
 	"revisions.refresh":                          {"revisions"},
+	"revisions.resolve":                          {"revisions"},
 	"revisions.revert.apply":                     {"revisions.revert"},
 	"revisions.revert.cancel":                    {"revisions.revert"},
 	"revisions.revert.force_apply":               {"revisions.revert"},

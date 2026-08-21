@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/idursun/jjui/internal/jj"
+	"github.com/idursun/jjui/internal/ui/common"
 	"github.com/idursun/jjui/internal/ui/intents"
 	"github.com/idursun/jjui/internal/ui/layout"
 	"github.com/idursun/jjui/internal/ui/operations"
@@ -12,6 +13,7 @@ import (
 	"github.com/idursun/jjui/internal/ui/render"
 	"github.com/idursun/jjui/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleIntent_RevisionsModeOpeners(t *testing.T) {
@@ -63,6 +65,26 @@ func TestHandleIntent_OpenRebaseSeedsTrackedSelection(t *testing.T) {
 	if assert.NotNil(t, op.To, "rebase target should be seeded when opened via HandleIntent") {
 		assert.Equal(t, selected.GetChangeId(), op.To.GetChangeId())
 	}
+}
+
+func TestHandleIntent_ResolveConflictsTargetsSelectedRevision(t *testing.T) {
+	commandRunner := test.NewTestCommandRunner(t)
+	commandRunner.Expect(jj.ResolveConflicts("b"))
+	defer commandRunner.Verify()
+
+	ctx := test.NewTestContext(commandRunner)
+	model := New(ctx)
+	model.updateGraphRows(rows, "a", true)
+	model.SetCursor(1)
+
+	cmd, handled := model.HandleIntent(intents.ResolveConflicts{})
+	require.True(t, handled)
+	require.NotNil(t, cmd)
+
+	msg := cmd()
+	refresh, ok := msg.(common.RefreshMsg)
+	require.True(t, ok)
+	assert.Equal(t, "b", refresh.SelectedRevision)
 }
 
 type confirmationTrackingOp struct {

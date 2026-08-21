@@ -51,6 +51,7 @@ bindings = [
     { key = "shift+s", action = "revisions.open_squash", scope = "revisions", desc = "squash" },
     { key = "shift+m", action = "revisions.open_set_parents", scope = "revisions", desc = "set parents" },
     { key = "shift+r", action = "revisions.open_revert", scope = "revisions", desc = "revert" },
+    { key = "alt+r", action = "revisions.resolve", scope = "revisions", desc = "resolve conflicts" },
     { key = "y", action = "revisions.open_duplicate", scope = "revisions", desc = "duplicate" },
     { key = "d", action = "revisions.diff", scope = "revisions", desc = "diff" },
     { key = "alt+d", action = "revisions.open_diff_range", scope = "revisions", desc = "diff range" },

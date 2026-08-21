@@ -91,6 +91,10 @@ func DiffEdit(changeId string) CommandArgs {
 	return []string{"diffedit", "-r", changeId}
 }
 
+func ResolveConflicts(revision string) CommandArgs {
+	return []string{"resolve", "-r", revision}
+}
+
 func Split(revision string, files []FileName, parallel bool, interactive bool) CommandArgs {
 	args := []string{"split", "-r", revision}
 	if parallel {

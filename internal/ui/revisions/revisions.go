@@ -745,6 +745,8 @@ func (m *Model) HandleIntent(intent intents.Intent) (tea.Cmd, bool) {
 		return m.startEdit(intent), true
 	case intents.DiffEdit:
 		return m.startDiffEdit(intent), true
+	case intents.ResolveConflicts:
+		return m.resolveConflicts(intent), true
 	case intents.OpenRevert:
 		return m.startRevert(intent), true
 	case intents.OpenDuplicate:
@@ -948,6 +950,18 @@ func (m *Model) startDiffEdit(intent intents.DiffEdit) tea.Cmd {
 		return nil
 	}
 	return m.context.RunInteractiveCommand(jj.DiffEdit(commit.GetChangeId()), common.Refresh)
+}
+
+func (m *Model) resolveConflicts(intent intents.ResolveConflicts) tea.Cmd {
+	commit := intent.Selected
+	if commit == nil {
+		commit = m.SelectedRevision()
+	}
+	if commit == nil {
+		return nil
+	}
+	revision := commit.GetChangeId()
+	return m.context.RunInteractiveCommand(jj.ResolveConflicts(revision), common.RefreshAndSelect(revision))
 }
 
 func (m *Model) startAbsorb(intent intents.OpenAbsorb) tea.Cmd {
