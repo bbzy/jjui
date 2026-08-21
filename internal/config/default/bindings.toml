@@ -273,7 +273,9 @@ bindings = [
 
     # revisions.new_between
     { key = "enter", action = "revisions.new_between.apply", scope = "revisions.new_between", desc = "apply" },
-    { key = "space", action = "revisions.new_between.toggle_insert_before", scope = "revisions.new_between", desc = "select before" },
+    { key = "a", action = "revisions.new_between.set_target", scope = "revisions.new_between", args = { target = "after" }, desc = "target: after" },
+    { key = "b", action = "revisions.new_between.set_target", scope = "revisions.new_between", args = { target = "before" }, desc = "target: before" },
+    { key = "space", action = "revisions.new_between.toggle_insert_before", scope = "revisions.new_between", desc = "select target" },
     { key = "esc", action = "revisions.new_between.cancel", scope = "revisions.new_between", desc = "cancel" },
     { key = ["up", "k"], action = "revisions.move_up", scope = "revisions.new_between", desc = "up" },
     { key = ["down", "j"], action = "revisions.move_down", scope = "revisions.new_between", desc = "down" },

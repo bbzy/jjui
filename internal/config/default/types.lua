@@ -439,6 +439,7 @@ function wait_refresh() end
 ---@class jjui.revisions.new_between
 ---@field apply fun()
 ---@field cancel fun()
+---@field set_target fun(args: {target: "before"|"after"})
 ---@field toggle_insert_before fun()
 ---@field close fun()
 

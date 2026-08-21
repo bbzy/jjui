@@ -230,6 +230,20 @@ type DiffRangeOpenTargetPicker struct {
 
 func (DiffRangeOpenTargetPicker) isIntent() {}
 
+type NewBetweenTarget int
+
+const (
+	NewBetweenTargetBefore NewBetweenTarget = iota
+	NewBetweenTargetAfter
+)
+
+//jjui:bind scope=revisions.new_between action=set_target set=Target:$enum(target)
+type NewBetweenSetTarget struct {
+	Target NewBetweenTarget
+}
+
+func (NewBetweenSetTarget) isIntent() {}
+
 //jjui:bind scope=revisions.new_between action=toggle_insert_before
 type NewBetweenToggleInsertBefore struct{}
 

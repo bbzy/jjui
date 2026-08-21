@@ -111,6 +111,90 @@ func TestApplyUsesPinnedInsertBeforeRevisions(t *testing.T) {
 	assert.Contains(t, op.Render(&jj.Commit{ChangeId: "before-2"}, operations.RenderBeforeChangeId), "<< before this >>")
 }
 
+func TestApplyCanInsertAfterCurrentTargetWithoutChangingInitialAnchor(t *testing.T) {
+	commandRunner := test.NewTestCommandRunner(t)
+	commandRunner.Expect(jj.NewInsert(
+		jj.NewSelectedRevisions(&jj.Commit{ChangeId: "anchor"}, &jj.Commit{ChangeId: "target"}),
+		jj.NewSelectedRevisions(),
+	))
+	defer commandRunner.Verify()
+
+	op := New(
+		test.NewTestContext(commandRunner),
+		jj.NewSelectedRevisions(&jj.Commit{ChangeId: "anchor"}),
+		&jj.Commit{ChangeId: "target"},
+	)
+
+	cmd, handled := op.HandleIntent(intents.NewBetweenSetTarget{Target: intents.NewBetweenTargetAfter})
+	require.True(t, handled)
+	require.Nil(t, cmd)
+
+	cmd, handled = op.HandleIntent(intents.Apply{})
+	require.True(t, handled)
+	require.NotNil(t, cmd)
+
+	test.SimulateModel(op, cmd)
+
+	assert.Contains(t, op.Render(&jj.Commit{ChangeId: "anchor"}, operations.RenderBeforeChangeId), "<< after this >>")
+	assert.Contains(t, op.Render(&jj.Commit{ChangeId: "target"}, operations.RenderBeforeChangeId), "<< after this >>")
+}
+
+func TestTargetCanSwitchBackToBeforeWithoutChangingInitialAnchor(t *testing.T) {
+	commandRunner := test.NewTestCommandRunner(t)
+	commandRunner.Expect(jj.NewInsert(
+		jj.NewSelectedRevisions(&jj.Commit{ChangeId: "anchor"}),
+		jj.NewSelectedRevisions(&jj.Commit{ChangeId: "target"}),
+	))
+	defer commandRunner.Verify()
+
+	op := New(
+		test.NewTestContext(commandRunner),
+		jj.NewSelectedRevisions(&jj.Commit{ChangeId: "anchor"}),
+		&jj.Commit{ChangeId: "target"},
+	)
+
+	cmd, handled := op.HandleIntent(intents.NewBetweenSetTarget{Target: intents.NewBetweenTargetAfter})
+	require.True(t, handled)
+	require.Nil(t, cmd)
+
+	cmd, handled = op.HandleIntent(intents.NewBetweenSetTarget{Target: intents.NewBetweenTargetBefore})
+	require.True(t, handled)
+	require.Nil(t, cmd)
+
+	assert.Contains(t, op.Render(&jj.Commit{ChangeId: "anchor"}, operations.RenderBeforeChangeId), "<< after this >>")
+	assert.Contains(t, op.Render(&jj.Commit{ChangeId: "target"}, operations.RenderBeforeChangeId), "<< before this >>")
+
+	cmd, handled = op.HandleIntent(intents.Apply{})
+	require.True(t, handled)
+	require.NotNil(t, cmd)
+	test.SimulateModel(op, cmd)
+}
+
+func TestOverlappingInsertAfterTargetUsesPlainNew(t *testing.T) {
+	commandRunner := test.NewTestCommandRunner(t)
+	commandRunner.Expect(jj.New(jj.NewSelectedRevisions(&jj.Commit{ChangeId: "anchor"})))
+	defer commandRunner.Verify()
+
+	op := New(
+		test.NewTestContext(commandRunner),
+		jj.NewSelectedRevisions(&jj.Commit{ChangeId: "anchor"}),
+		&jj.Commit{ChangeId: "anchor"},
+	)
+
+	cmd, handled := op.HandleIntent(intents.NewBetweenSetTarget{Target: intents.NewBetweenTargetAfter})
+	require.True(t, handled)
+	require.Nil(t, cmd)
+
+	marker := op.Render(&jj.Commit{ChangeId: "anchor"}, operations.RenderBeforeChangeId)
+	assert.Contains(t, marker, "<< after this >>")
+	assert.NotContains(t, marker, "<< before this >>")
+
+	cmd, handled = op.HandleIntent(intents.Apply{})
+	require.True(t, handled)
+	require.NotNil(t, cmd)
+	test.SimulateModel(op, cmd)
+}
+
 func TestSelectionChangeUpdatesFallbackInsertBeforeWhenNothingIsPinned(t *testing.T) {
 	commandRunner := test.NewTestCommandRunner(t)
 	commandRunner.Expect(jj.NewInsert(

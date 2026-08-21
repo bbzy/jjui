@@ -650,6 +650,8 @@ func ResolveIntent(scope string, action keybindings.Action, args map[string]any)
 			return intents.Apply{}, true
 		case keybindings.Action("revisions.new_between.cancel"):
 			return intents.Cancel{}, true
+		case keybindings.Action("revisions.new_between.set_target"):
+			return intents.NewBetweenSetTarget{Target: enumArgNewBetweenTarget(args, "target")}, true
 		case keybindings.Action("revisions.new_between.toggle_insert_before"):
 			return intents.NewBetweenToggleInsertBefore{}, true
 		}
@@ -925,6 +927,29 @@ func enumArgModeTarget(args map[string]any, name string) intents.ModeTarget {
 		return intents.ModeTargetBefore
 	case "insert":
 		return intents.ModeTargetInsert
+	default:
+		return zero
+	}
+}
+
+func enumArgNewBetweenTarget(args map[string]any, name string) intents.NewBetweenTarget {
+	var zero intents.NewBetweenTarget
+	if args == nil {
+		return zero
+	}
+	v, ok := args[name]
+	if !ok {
+		return zero
+	}
+	s, ok := v.(string)
+	if !ok {
+		return zero
+	}
+	switch s {
+	case "before":
+		return intents.NewBetweenTargetBefore
+	case "after":
+		return intents.NewBetweenTargetAfter
 	default:
 		return zero
 	}

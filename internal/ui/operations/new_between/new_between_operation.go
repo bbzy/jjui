@@ -18,10 +18,11 @@ var _ common.ScopeProvider = (*Operation)(nil)
 var _ common.ScopeHandler = (*Operation)(nil)
 
 type Operation struct {
-	context      *appContext.MainContext
-	insertAfter  jj.SelectedRevisions
-	insertBefore jj.SelectedRevisions
-	current      *jj.Commit
+	context     *appContext.MainContext
+	insertAfter jj.SelectedRevisions
+	targets     jj.SelectedRevisions
+	target      intents.NewBetweenTarget
+	current     *jj.Commit
 }
 
 func (o *Operation) IsFocused() bool {
@@ -60,20 +61,25 @@ func (o *Operation) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (o *Operation) HandleIntent(intent intents.Intent) (tea.Cmd, bool) {
-	switch intent.(type) {
+	switch intent := intent.(type) {
 	case intents.Cancel:
 		return common.Close, true
 	case intents.Apply:
-		insertBefore := o.effectiveInsertBefore()
-		if len(o.insertAfter.Revisions) == 0 && len(insertBefore.Revisions) == 0 {
+		targets := o.effectiveTargets()
+		if len(o.insertAfter.Revisions) == 0 && len(targets.Revisions) == 0 {
 			return nil, true
 		}
 		return tea.Sequence(
 			common.Close,
-			o.context.RunCommand(o.newCommand(insertBefore), common.RefreshAndSelect("@")),
+			o.context.RunCommand(o.newCommand(targets), common.RefreshAndSelect("@")),
 		), true
 	case intents.NewBetweenToggleInsertBefore:
-		o.insertBefore = o.insertBefore.Toggle(o.current)
+		o.targets = o.targets.Toggle(o.current)
+		return nil, true
+	case intents.NewBetweenSetTarget:
+		if intent.Target == intents.NewBetweenTargetAfter || intent.Target == intents.NewBetweenTargetBefore {
+			o.target = intent.Target
+		}
 		return nil, true
 	}
 	return nil, false
@@ -88,21 +94,16 @@ func (o *Operation) Render(commit *jj.Commit, pos operations.RenderPosition) str
 
 	sourceMarkerStyle := common.DefaultPalette.Get("new", "", "source_marker", false)
 	targetMarkerStyle := common.DefaultPalette.Get("new", "", "target_marker", false)
-	isInsertAfter := o.insertAfter.Contains(commit)
-	isInsertBefore := false
-	if len(o.insertBefore.Revisions) > 0 {
-		isInsertBefore = o.insertBefore.Contains(commit)
-	} else {
-		isInsertBefore = o.current != nil && o.current.GetChangeId() == commit.GetChangeId()
-	}
-
-	if isInsertAfter {
+	if o.insertAfter.Contains(commit) {
 		return sourceMarkerStyle.Render("<< after this >>")
 	}
-	if isInsertBefore {
-		return targetMarkerStyle.Render("<< before this >>")
+	if !o.effectiveTargets().Contains(commit) {
+		return ""
 	}
-	return ""
+	if o.target == intents.NewBetweenTargetAfter {
+		return targetMarkerStyle.Render("<< after this >>")
+	}
+	return targetMarkerStyle.Render("<< before this >>")
 }
 
 func (o *Operation) Name() string {
@@ -110,20 +111,40 @@ func (o *Operation) Name() string {
 }
 
 func New(context *appContext.MainContext, insertAfter jj.SelectedRevisions, current *jj.Commit) *Operation {
-	return &Operation{context: context, insertAfter: insertAfter, current: current}
+	return &Operation{
+		context:     context,
+		insertAfter: insertAfter,
+		target:      intents.NewBetweenTargetBefore,
+		current:     current,
+	}
 }
 
-func (o *Operation) effectiveInsertBefore() jj.SelectedRevisions {
-	if len(o.insertBefore.Revisions) > 0 {
-		return o.insertBefore
+func (o *Operation) effectiveTargets() jj.SelectedRevisions {
+	if len(o.targets.Revisions) > 0 {
+		return o.targets
 	}
 	return jj.NewSelectedRevisions(o.current)
 }
 
-func (o *Operation) newCommand(insertBefore jj.SelectedRevisions) jj.CommandArgs {
-	// jj rejects inserting both after and before the same commit; fall back to a normal child commit.
-	if len(o.insertAfter.Revisions) == 1 && len(insertBefore.Revisions) == 1 && o.insertAfter.Revisions[0].Equal(insertBefore.Revisions[0]) {
+func (o *Operation) newCommand(targets jj.SelectedRevisions) jj.CommandArgs {
+	// When the fixed anchor and target are the same revision, either target direction
+	// describes a normal child commit. Using --insert-after would also rebase its children.
+	if len(o.insertAfter.Revisions) == 1 && len(targets.Revisions) == 1 && o.insertAfter.Revisions[0].Equal(targets.Revisions[0]) {
 		return jj.New(o.insertAfter)
 	}
-	return jj.NewInsert(o.insertAfter, insertBefore)
+
+	if o.target == intents.NewBetweenTargetAfter {
+		return jj.NewInsert(combineRevisions(o.insertAfter, targets), jj.NewSelectedRevisions())
+	}
+	return jj.NewInsert(o.insertAfter, targets)
+}
+
+func combineRevisions(first jj.SelectedRevisions, second jj.SelectedRevisions) jj.SelectedRevisions {
+	combined := jj.NewSelectedRevisions(first.Revisions...)
+	for _, revision := range second.Revisions {
+		if !combined.Contains(revision) {
+			combined = combined.Add(revision)
+		}
+	}
+	return combined
 }
