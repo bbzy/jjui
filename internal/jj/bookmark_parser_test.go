@@ -154,3 +154,16 @@ feature;origin;true;true;false;false;b`,
 		})
 	}
 }
+
+func TestParsePendingBookmarkDeletions(t *testing.T) {
+	output := "\"feature/current\"\t\"origin\"\t\"current-change\"\t\"current-commit\"\n" +
+		"\"feature/other;with separator\"\t\"origin\"\t\"other-change\"\t\"other-commit\"\n" +
+		"\"feature/upstream\"\t\"upstream\"\t\"upstream-change\"\t\"upstream-commit\"\n" +
+		"\"malformed\""
+
+	assert.Equal(t, []PendingBookmarkDeletion{
+		{Name: "feature/current", Remote: "origin", ChangeId: "current-change", CommitId: "current-commit"},
+		{Name: "feature/other;with separator", Remote: "origin", ChangeId: "other-change", CommitId: "other-commit"},
+		{Name: "feature/upstream", Remote: "upstream", ChangeId: "upstream-change", CommitId: "upstream-commit"},
+	}, ParsePendingBookmarkDeletions(output))
+}

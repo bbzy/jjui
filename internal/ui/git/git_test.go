@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/idursun/jjui/internal/jj"
+	appContext "github.com/idursun/jjui/internal/ui/context"
 	"github.com/idursun/jjui/internal/ui/intents"
 	"github.com/idursun/jjui/internal/ui/layout"
 	"github.com/idursun/jjui/internal/ui/render"
@@ -53,6 +54,68 @@ func Test_FilterIntentPressedTwice_ExecutesShortcut(t *testing.T) {
 	// First press applies the category filter; second press executes its shortcut.
 	test.SimulateModel(op, func() tea.Msg { return intents.GitFilter{Kind: intents.GitFilterFetch} })
 	test.SimulateModel(op, func() tea.Msg { return intents.GitFilter{Kind: intents.GitFilterFetch} })
+}
+
+func Test_DeleteFilter_ShowsSpecificDeletionsWithCurrentChangeFirst(t *testing.T) {
+	const currentChangeId = "current-change"
+	commandRunner := test.NewTestCommandRunner(t)
+	commandRunner.Expect(jj.GitRemoteList()).SetOutput([]byte("origin\nupstream\n"))
+	commandRunner.Expect(jj.BookmarkListPendingDeletions()).SetOutput([]byte(
+		"\"feature/other\"\t\"origin\"\t\"other-change\"\t\"other-commit\"\n" +
+			"\"feature/upstream\"\t\"upstream\"\t\"upstream-change\"\t\"upstream-commit\"\n" +
+			"\"feature/current\"\t\"origin\"\t\"current-change-full\"\t\"current-commit-full\"\n",
+	))
+	commandRunner.Expect(jj.GitPushBookmark("feature/current", "origin"))
+	defer commandRunner.Verify()
+
+	ctx := test.NewTestContext(commandRunner)
+	ctx.SelectedItem = appContext.SelectedRevision{ChangeId: currentChangeId, CommitId: "current-commit"}
+	op := NewModel(ctx, jj.NewSelectedRevisions())
+	test.SimulateModel(op, op.Init())
+	test.SimulateModel(op, intents.Invoke(intents.GitFilter{Kind: intents.GitFilterDelete}))
+
+	items := op.visibleItems()
+	if !assert.Len(t, items, 3) {
+		return
+	}
+	assert.Equal(t, []string(jj.GitPushBookmark("feature/current", "origin")), items[0].command)
+	assert.Contains(t, items[0].desc, "current change")
+	assert.Equal(t, []string(jj.GitPushBookmark("feature/other", "origin")), items[1].command)
+	assert.Equal(t, []string(jj.GitPushBookmarks([]string{"feature/current", "feature/other"}, "origin")), items[2].command)
+	assert.Equal(t, "a", items[2].key)
+
+	test.SimulateModel(op, intents.Invoke(intents.Apply{}))
+}
+
+func Test_DeleteFilterPressedTwice_DoesNotExecuteDeletion(t *testing.T) {
+	commandRunner := test.NewTestCommandRunner(t)
+	commandRunner.Expect(jj.GitRemoteList()).SetOutput([]byte("origin\n"))
+	commandRunner.Expect(jj.BookmarkListPendingDeletions()).SetOutput([]byte("\"feature/current\"\t\"origin\"\t\"current-change\"\t\"current-commit\"\n"))
+	defer commandRunner.Verify()
+
+	op := NewModel(test.NewTestContext(commandRunner), jj.NewSelectedRevisions())
+	test.SimulateModel(op, op.Init())
+	test.SimulateModel(op, intents.Invoke(intents.GitFilter{Kind: intents.GitFilterDelete}))
+	test.SimulateModel(op, intents.Invoke(intents.GitFilter{Kind: intents.GitFilterDelete}))
+
+	assert.Equal(t, string(intents.GitFilterDelete), op.categoryFilter)
+}
+
+func Test_DeleteFilter_AllShortcutPushesOnlyListedBookmarks(t *testing.T) {
+	commandRunner := test.NewTestCommandRunner(t)
+	commandRunner.Expect(jj.GitRemoteList()).SetOutput([]byte("origin\nupstream\n"))
+	commandRunner.Expect(jj.BookmarkListPendingDeletions()).SetOutput([]byte(
+		"\"feature/one\"\t\"origin\"\t\"change-one\"\t\"commit-one\"\n" +
+			"\"feature/upstream\"\t\"upstream\"\t\"change-upstream\"\t\"commit-upstream\"\n" +
+			"\"feature/two\"\t\"origin\"\t\"change-two\"\t\"commit-two\"\n",
+	))
+	commandRunner.Expect(jj.GitPushBookmarks([]string{"feature/one", "feature/two"}, "origin"))
+	defer commandRunner.Verify()
+
+	op := NewModel(test.NewTestContext(commandRunner), jj.NewSelectedRevisions())
+	test.SimulateModel(op, op.Init())
+	test.SimulateModel(op, intents.Invoke(intents.GitFilter{Kind: intents.GitFilterDelete}))
+	test.SimulateModel(op, intents.Invoke(intents.GitApplyShortcut{Key: "a"}))
 }
 
 func Test_loadBookmarks(t *testing.T) {
@@ -125,6 +188,7 @@ func Test_PushSelectedBookmarks_SkipsRemoteOnlyNonMatchingAndUntrackedRemotes(t 
 	commandRunner.Expect(jj.BookmarkList(newLocal)).SetOutput([]byte("feature-d;.;true;false;false;false;92\n"))
 	commandRunner.Expect(jj.BookmarkList(localOnUntrackedOrigin)).SetOutput([]byte("feature-e;.;true;false;false;false;95\nfeature-e;origin;true;false;false;false;95\n"))
 	commandRunner.Expect(jj.GitRemoteList()).SetOutput([]byte("origin\nupstream\n"))
+	commandRunner.Expect(jj.BookmarkListPendingDeletions()).SetOutput([]byte(""))
 	commandRunner.Expect(jj.GitPush("--remote", "origin", "--bookmark", "feature-a", "--bookmark", "feature-d"))
 	defer commandRunner.Verify()
 
@@ -160,6 +224,7 @@ func Test_NewModel_DoesNotPanicWithNilSelectedRevision(t *testing.T) {
 func TestGit_ZIndex_RendersAboveMainContent(t *testing.T) {
 	commandRunner := test.NewTestCommandRunner(t)
 	commandRunner.Expect(jj.GitRemoteList()).SetOutput([]byte("origin"))
+	commandRunner.Expect(jj.BookmarkListPendingDeletions()).SetOutput([]byte(""))
 
 	op := NewModel(test.NewTestContext(commandRunner), jj.NewSelectedRevisions())
 	test.SimulateModel(op, op.Init())

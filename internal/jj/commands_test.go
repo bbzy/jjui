@@ -15,6 +15,8 @@ func TestBookmarkPatternCommandsUseExactStringPatterns(t *testing.T) {
 	assert.Equal(t, CommandArgs{"bookmark", "forget", `exact:"1.3.63-+-json-length-\"fix\"\\branch"`}, BookmarkForget(name))
 	assert.Equal(t, CommandArgs{"bookmark", "track", `exact:"1.3.63-+-json-length-\"fix\"\\branch"`, "--remote", `exact:"origin+backup"`}, BookmarkTrack(name, remote))
 	assert.Equal(t, CommandArgs{"bookmark", "untrack", `exact:"1.3.63-+-json-length-\"fix\"\\branch"`, "--remote", `exact:"origin+backup"`}, BookmarkUntrack(name, remote))
+	assert.Equal(t, CommandArgs{"git", "push", "--bookmark", `exact:"1.3.63-+-json-length-\"fix\"\\branch"`, "--remote", remote}, GitPushBookmark(name, remote))
+	assert.Equal(t, CommandArgs{"git", "push", "--bookmark", `exact:"1.3.63-+-json-length-\"fix\"\\branch"`, "--bookmark", `exact:"feature/other"`, "--remote", remote}, GitPushBookmarks([]string{name, "feature/other"}, remote))
 }
 
 func TestFileCommandsUseTypedRepositoryPaths(t *testing.T) {
@@ -56,4 +58,3 @@ func TestAnnotationCommandsUseStableMachineReadableOutput(t *testing.T) {
 func TestResolveConflictsTargetsRevision(t *testing.T) {
 	assert.Equal(t, CommandArgs{"resolve", "-r", "change-id"}, ResolveConflicts("change-id"))
 }
-

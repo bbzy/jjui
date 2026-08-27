@@ -290,6 +290,10 @@ func BookmarkListAll() CommandArgs {
 	return []string{"bookmark", "list", "-a", "--template", allBookmarkTemplate, "--color", "never", "--ignore-working-copy"}
 }
 
+func BookmarkListPendingDeletions() CommandArgs {
+	return []string{"bookmark", "list", "-a", "--template", pendingBookmarkDeletionTemplate, "--color", "never", "--ignore-working-copy"}
+}
+
 func TagList() CommandArgs {
 	return []string{"tag", "list", "--template", "name ++ '\n'", "--color", "never", "--ignore-working-copy"}
 }
@@ -308,6 +312,19 @@ func GitPush(flags ...string) CommandArgs {
 		args = append(args, flags...)
 	}
 	return args
+}
+
+func GitPushBookmark(name string, remote string) CommandArgs {
+	return GitPushBookmarks([]string{name}, remote)
+}
+
+func GitPushBookmarks(names []string, remote string) CommandArgs {
+	flags := make([]string, 0, len(names)*2+2)
+	for _, name := range names {
+		flags = append(flags, "--bookmark", exactStringPattern(name))
+	}
+	flags = append(flags, "--remote", remote)
+	return GitPush(flags...)
 }
 
 func GitRemoteList() CommandArgs {

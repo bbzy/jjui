@@ -387,6 +387,7 @@ bindings = [
     { key = "enter", action = "git.apply", scope = "git", desc = "apply" },
     { key = "p", action = "git.push", scope = "git", desc = "push" },
     { key = "f", action = "git.fetch", scope = "git", desc = "fetch" },
+    { key = "d", action = "git.delete", scope = "git", desc = "delete" },
     { key = "/", action = "git.filter", scope = "git", desc = "filter" },
     { key = "tab", action = "git.cycle_remotes", scope = "git", desc = "next remote" },
     { key = "shift+tab", action = "git.cycle_remotes_back", scope = "git", desc = "prev remote" },

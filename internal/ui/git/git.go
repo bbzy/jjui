@@ -20,8 +20,9 @@ import (
 type itemCategory string
 
 const (
-	itemCategoryPush  itemCategory = "push"
-	itemCategoryFetch itemCategory = "fetch"
+	itemCategoryPush   itemCategory = "push"
+	itemCategoryFetch  itemCategory = "fetch"
+	itemCategoryDelete itemCategory = "delete"
 )
 
 // SelectRemoteMsg is sent when a remote is clicked
@@ -92,6 +93,9 @@ type Model struct {
 	categoryFilter      string
 	ensureCursorVisible bool
 	revisions           jj.SelectedRevisions
+	pendingDeletions    []jj.PendingBookmarkDeletion
+	currentChangeId     string
+	currentCommitId     string
 	remoteNames         []string
 	selectedRemoteIdx   int
 	title               string
@@ -226,6 +230,9 @@ func (m *Model) HandleIntent(intent intents.Intent) (tea.Cmd, bool) {
 			return nil, true
 		}
 		if m.categoryFilter == filter {
+			if msg.Kind == intents.GitFilterDelete {
+				return nil, true
+			}
 			return m.executeDefaultForFilter(msg.Kind), true
 		}
 		m.categoryFilter = filter
@@ -405,12 +412,34 @@ func loadRemoteNames(c context.CommandRunner) []string {
 	return remotes
 }
 
+func loadPendingBookmarkDeletions(c context.CommandRunner) []jj.PendingBookmarkDeletion {
+	bytes, _ := c.RunCommandImmediate(jj.BookmarkListPendingDeletions())
+	return jj.ParsePendingBookmarkDeletions(string(bytes))
+}
+
 func NewModel(c *context.MainContext, revisions jj.SelectedRevisions) *Model {
 	remotes := loadRemoteNames(c)
+	var pendingDeletions []jj.PendingBookmarkDeletion
+	if len(remotes) > 0 {
+		pendingDeletions = loadPendingBookmarkDeletions(c)
+	}
+
+	currentChangeId := ""
+	currentCommitId := ""
+	if selected, ok := c.SelectedItem.(context.SelectedRevision); ok {
+		currentChangeId = selected.ChangeId
+		currentCommitId = selected.CommitId
+	} else if len(revisions.Revisions) > 0 {
+		currentChangeId = revisions.Revisions[0].GetChangeId()
+		currentCommitId = revisions.Revisions[0].CommitId
+	}
 
 	m := &Model{
 		context:           c,
 		revisions:         revisions,
+		pendingDeletions:  pendingDeletions,
+		currentChangeId:   currentChangeId,
+		currentCommitId:   currentCommitId,
 		remoteNames:       remotes,
 		selectedRemoteIdx: 0,
 		listRenderer:      render.NewListRenderer(itemScrollMsg{}),
@@ -715,14 +744,53 @@ func (m *Model) createMenuItems() []item {
 		items = append(items, item)
 	}
 
-	items = append(items,
-		item{
-			name:     fmt.Sprintf("git push --deleted --remote %s", selectedRemote),
+	deletedBookmarks := make([]jj.PendingBookmarkDeletion, 0)
+	for _, deletion := range m.pendingDeletions {
+		if deletion.Remote == selectedRemote {
+			deletedBookmarks = append(deletedBookmarks, deletion)
+		}
+	}
+	slices.SortFunc(deletedBookmarks, func(a, b jj.PendingBookmarkDeletion) int {
+		aIsCurrent := m.isCurrentDeletion(a)
+		bIsCurrent := m.isCurrentDeletion(b)
+		if aIsCurrent != bIsCurrent {
+			if aIsCurrent {
+				return -1
+			}
+			return 1
+		}
+		return strings.Compare(a.Name, b.Name)
+	})
+	for _, deletion := range deletedBookmarks {
+		desc := fmt.Sprintf("Delete remote bookmark %s from %s", deletion.Name, selectedRemote)
+		if m.isCurrentDeletion(deletion) {
+			desc += " (current change)"
+		}
+		items = append(items, item{
+			name:     fmt.Sprintf("git push --bookmark %s --remote %s", deletion.Name, selectedRemote),
+			desc:     desc,
+			command:  jj.GitPushBookmark(deletion.Name, selectedRemote),
+			category: itemCategoryDelete,
+		})
+	}
+
+	if len(deletedBookmarks) > 0 {
+		deletedBookmarkNames := make([]string, 0, len(deletedBookmarks))
+		deletedBookmarkFlags := make([]string, 0, len(deletedBookmarks))
+		for _, deletion := range deletedBookmarks {
+			deletedBookmarkNames = append(deletedBookmarkNames, deletion.Name)
+			deletedBookmarkFlags = append(deletedBookmarkFlags, "--bookmark "+deletion.Name)
+		}
+		items = append(items, item{
+			name:     fmt.Sprintf("git push %s --remote %s", strings.Join(deletedBookmarkFlags, " "), selectedRemote),
 			desc:     "Push all deleted bookmarks",
-			command:  jj.GitPush("--deleted", "--remote", selectedRemote),
-			category: itemCategoryPush,
-			key:      "d",
-		},
+			command:  jj.GitPushBookmarks(deletedBookmarkNames, selectedRemote),
+			category: itemCategoryDelete,
+			key:      "a",
+		})
+	}
+
+	items = append(items,
 		item{
 			name:     fmt.Sprintf("git push --tracked --remote %s", selectedRemote),
 			desc:     "Push all tracked bookmarks",
@@ -753,4 +821,13 @@ func (m *Model) createMenuItems() []item {
 	)
 
 	return items
+}
+
+func (m *Model) isCurrentDeletion(deletion jj.PendingBookmarkDeletion) bool {
+	return idPrefixMatches(deletion.ChangeId, m.currentChangeId) || idPrefixMatches(deletion.CommitId, m.currentCommitId)
+}
+
+func idPrefixMatches(fullId string, selectedId string) bool {
+	selectedId, _, _ = strings.Cut(selectedId, "/")
+	return fullId != "" && selectedId != "" && (strings.HasPrefix(fullId, selectedId) || strings.HasPrefix(selectedId, fullId))
 }

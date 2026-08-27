@@ -255,12 +255,14 @@ func (BookmarkPaneFetch) isIntent() {}
 type GitFilterKind string
 
 const (
-	GitFilterPush  GitFilterKind = "push"
-	GitFilterFetch GitFilterKind = "fetch"
+	GitFilterPush   GitFilterKind = "push"
+	GitFilterFetch  GitFilterKind = "fetch"
+	GitFilterDelete GitFilterKind = "delete"
 )
 
 //jjui:bind scope=git action=push set=Kind:GitFilterPush
 //jjui:bind scope=git action=fetch set=Kind:GitFilterFetch
+//jjui:bind scope=git action=delete set=Kind:GitFilterDelete
 type GitFilter struct {
 	Kind GitFilterKind
 }

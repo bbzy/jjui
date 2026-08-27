@@ -489,6 +489,7 @@ func Test_GitWithExpandedStatus_EscClosesStackedFirst(t *testing.T) {
 
 	commandRunner := test.NewTestCommandRunner(t)
 	commandRunner.Expect(jj.GitRemoteList()).SetOutput([]byte("origin"))
+	commandRunner.Expect(jj.BookmarkListPendingDeletions()).SetOutput([]byte(""))
 	defer commandRunner.Verify()
 
 	ctx := test.NewTestContext(commandRunner)

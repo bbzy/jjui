@@ -304,6 +304,8 @@ func ResolveIntent(scope string, action keybindings.Action, args map[string]any)
 			return intents.GitCycleRemotes{Delta: 1}, true
 		case keybindings.Action("git.cycle_remotes_back"):
 			return intents.GitCycleRemotes{Delta: -1}, true
+		case keybindings.Action("git.delete"):
+			return intents.GitFilter{Kind: intents.GitFilterDelete}, true
 		case keybindings.Action("git.fetch"):
 			return intents.GitFilter{Kind: intents.GitFilterFetch}, true
 		case keybindings.Action("git.filter"):

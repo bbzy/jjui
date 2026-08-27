@@ -223,6 +223,7 @@ function wait_refresh() end
 ---@field cancel fun()
 ---@field cycle_remotes fun()
 ---@field cycle_remotes_back fun()
+---@field delete fun()
 ---@field fetch fun()
 ---@field filter fun()
 ---@field move_down fun()

@@ -117,6 +117,7 @@ var builtInActionScopes = map[string][]string{
 	"git.cancel":                                 {"git"},
 	"git.cycle_remotes":                          {"git"},
 	"git.cycle_remotes_back":                     {"git"},
+	"git.delete":                                 {"git"},
 	"git.fetch":                                  {"git"},
 	"git.filter":                                 {"git"},
 	"git.move_down":                              {"git"},

@@ -1,12 +1,14 @@
 package jj
 
 import (
+	"encoding/json"
 	"strings"
 )
 
 const (
 	moveBookmarkTemplate = `name ++ ";" ++ if(remote, "remote", ".") ++ ";" ++ present ++ ";" ++ tracked ++ ";" ++ conflict ++ ";" ++ if(normal_target, normal_target.contained_in("%s"), false) ++ ";" ++ if(normal_target, normal_target.commit_id().shortest(1), "") ++ "\n"`
 	allBookmarkTemplate  = `name ++ ";" ++ if(remote, remote, ".") ++ ";" ++ present ++ ";" ++ tracked ++ ";" ++ conflict ++ ";" ++ false ++ ";" ++ if(normal_target, normal_target.commit_id().shortest(1), "") ++ "\n"`
+	pendingBookmarkDeletionTemplate = `if(remote && present && tracked && !tracking_present && !conflict, json(name) ++ "\t" ++ json(remote) ++ "\t" ++ json(normal_target.change_id()) ++ "\t" ++ json(normal_target.commit_id()) ++ "\n")`
 )
 
 type BookmarkRemote struct {
@@ -22,6 +24,13 @@ type Bookmark struct {
 	Remotes   []BookmarkRemote
 	Conflict  bool
 	Backwards bool
+}
+
+type PendingBookmarkDeletion struct {
+	Name     string
+	Remote   string
+	ChangeId string
+	CommitId string
 }
 
 func (b Bookmark) IsDeletable() bool {
@@ -111,4 +120,28 @@ func ParseBookmarkListOutput(output string) []Bookmark {
 		bookmarks[i] = *bookmarkMap[name]
 	}
 	return bookmarks
+}
+
+func ParsePendingBookmarkDeletions(output string) []PendingBookmarkDeletion {
+	lines := strings.Split(output, "\n")
+	deletions := make([]PendingBookmarkDeletion, 0, len(lines))
+	for _, line := range lines {
+		parts := strings.Split(line, "\t")
+		if len(parts) != 4 {
+			continue
+		}
+		var deletion PendingBookmarkDeletion
+		fields := []*string{&deletion.Name, &deletion.Remote, &deletion.ChangeId, &deletion.CommitId}
+		valid := true
+		for i, field := range fields {
+			if err := json.Unmarshal([]byte(parts[i]), field); err != nil {
+				valid = false
+				break
+			}
+		}
+		if valid {
+			deletions = append(deletions, deletion)
+		}
+	}
+	return deletions
 }
