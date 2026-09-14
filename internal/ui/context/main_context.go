@@ -2,6 +2,7 @@ package context
 
 import (
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -44,6 +45,11 @@ type MainContext struct {
 
 func NewAppContext(location string, aps *askpass.Server) *MainContext {
 	workingDirectory, _ := os.Getwd()
+	// jj root returns a physical path. Use the same basis for relative file
+	// displays even when PWD contains a symlink.
+	if resolved, err := filepath.EvalSymlinks(workingDirectory); err == nil {
+		workingDirectory = resolved
+	}
 	m := &MainContext{
 		CommandRunner: &MainCommandRunner{
 			Location: location,
